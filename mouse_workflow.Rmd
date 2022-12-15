@@ -1,0 +1,302 @@
+---
+title: "Workflow to produce visualizations of Pozniak, et al 2022 mouse melanoma data"
+author: "Theo Killian"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This workflow displays a variety of interactive Plotly visualizations to explore
+the *mouse* melanoma data published in the recent [Pozniak, et al 2022](https://www.biorxiv.org/content/10.1101/2022.08.11.502598v1).
+Plotly visualizations found in this workflow are also found in the accompanying 
+R Shiny App. 
+
+```{r message=FALSE, warning=FALSE}
+library("dplyr")
+library("tibble")
+library("ggplot2")
+library("ggpubr")
+library("GSVA")
+library("readr")
+library("heatmaply")
+library("plotly")
+```
+
+### Load data
+
+The aggregated `NRAS13_all_43k` cell dataset and test gene set consisting of two
+gene files are loaded:
+
+```{r message=FALSE, warning=FALSE}
+## read aggregated count human malignant dataset 
+df1 <- readRDS(file = "./counts/NRAS13_all_43k_agg_counts.rds")
+# df2 <- readRDS(file = "./counts/NRAS13_malign_preprint_agg_counts.rds")
+# head(df1)
+```
+
+### Gene lists
+
+This workflow is primarily designed with the intention to correlate two gene
+sets. Here we load such a data file with two toy gene sets. It is possible to 
+upload a custom user-generated gene set as long as the file is a CSV or TSV file
+and the gene sets are the first and second columns. This workflow ignores
+additional columns, and these columns may be named whatever the end user wishes.
+
+```{r message=FALSE, warning=FALSE}
+## read gene sets of interest to assay in the dataset
+g1 <- readr::read_csv("./counts/mouse_test_genes.csv")
+
+## display gene lists as data table
+g1 %>% 
+  DT::datatable()
+```
+
+### Create gene list
+
+This block of code puts each row of the test gene set into a list with each
+element in the list given the same name as the original dataframe columns,
+however `NA` values are removed from the list elements.
+
+```{r message=FALSE, warning=FALSE}
+gl <- list()
+for (i in 1:ncol(g1)) {
+  g1 %>% 
+    dplyr::select(i) %>%
+    dplyr::pull() -> gl[[i]]
+  gl[[i]] <- gl[[i]][!is.na(gl[[i]])]
+}
+names(gl) <- names(g1)
+```
+
+### Run GSVA
+
+The app applies GSVA on the gene sets found in the test gene file. This is the
+most time consuming computational step in the app.
+
+```{r message=FALSE, warning=FALSE}
+## run ssGSEA
+GSVA::gsva(expr = as.matrix(df1 %>% dplyr::select(-gene) %>% as.data.frame()),
+           gset.idx.list = gl) -> gsva_sig
+```
+
+## Violin Plots
+
+The dataframe resulting from the GSVA step is converted to a long dataframe and
+the information contained in the aggregated cell names is used to re-label the
+aggregated cell types by sample.
+
+```{r message=FALSE, warning=FALSE}
+## convert data for violin Plot 
+gsva_sig %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column() %>%
+  dplyr::rename(gene_sig = names(.)[1]) %>%
+  tidyr::gather(key = "cell_name", value = "expression", -gene_sig) %>%
+  dplyr::mutate(sample = gsub("^[^_]*.", "",
+                              gsub("_[^_]+$", "", cell_name))) %>%
+  dplyr::mutate(cell_type = dplyr::case_when(
+    grepl("B-cell", cell_name) ~ "B-cell",
+    grepl("CAF", cell_name) ~ "CAF",
+    grepl("DC", cell_name) ~ "DC",
+    grepl("EC", cell_name) ~ "EC",
+    grepl("Malignant", cell_name) ~ "Malignant",
+    grepl("Monocyte", cell_name) ~ "Monocyte/macrophage",
+    grepl("Pericyte", cell_name) ~ "Pericyte",
+    grepl("NKcell", cell_name) ~ "T/NKcell")) %>%
+  as.data.frame() -> a1
+```
+
+### Violin plots by gene set score
+
+This plot displays gene expression by cell type for each gene signature. Due to 
+UI space constraints in the app, we will probably be limited to displaying only
+the first two gene sets.
+
+```{r message=FALSE, warning=FALSE}
+a1 %>%
+  ggplot(aes(x = cell_type, y = expression, fill = cell_type)) +
+  geom_violin(alpha = 0.8) +
+  geom_point(position = position_jitter(seed = 1, width = 0.2),
+             size = 0.4, alpha = 0.8) +
+  theme_classic() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ggtitle("Violin plot of gene signature scores by cell type") +
+  facet_grid(~gene_sig) -> p1
+ggplotly(p1)
+# p1
+```
+
+## Heatmaps
+
+This block of code selects all of the genes found in the text file, extracts the
+counts for each sample and averages them for these genes. The gene counts have
+been transformed to log scale in order for highly expressed genes not skew the 
+gradient scale and drown out subtle changes in expression.
+
+```{r message=FALSE, warning=FALSE}
+df1 %>%
+  dplyr::filter(gene %in% unlist(g1)[!is.na(unlist(g1))]) %>%
+  tidyr::gather(key = "cell_name", value = "expression", -gene) %>%
+  dplyr::mutate(sample = gsub("^[^_]*.", "",
+                              gsub("_[^_]+$", "", cell_name))) %>%
+  dplyr::mutate(cell_type = dplyr::case_when(
+    grepl("B-cell", cell_name) ~ "B-cell",
+    grepl("CAF", cell_name) ~ "CAF",
+    grepl("DC", cell_name) ~ "DC",
+    grepl("EC", cell_name) ~ "EC",
+    grepl("Malignant", cell_name) ~ "Malignant",
+    grepl("Monocyte", cell_name) ~ "Monocyte/macrophage",
+    grepl("Pericyte", cell_name) ~ "Pericyte",
+    grepl("NKcell", cell_name) ~ "T/NKcell")) %>%
+  dplyr::group_by(gene, cell_type) %>%
+  dplyr::summarise(mean_exp = mean(expression)) %>%
+  tidyr::spread(key = "cell_type", value = "mean_exp") %>%
+  tibble::column_to_rownames(var = "gene") %>%
+  dplyr::mutate_all(log) %>%
+  as.data.frame() -> r1
+is.na(r1) <- sapply(r1, is.infinite)
+r1[is.na(r1)] <- 0
+
+heatmaply::heatmaply(
+    x = r1,
+    main = "Heatmap of log gene counts",
+    xlab = "Cell types",
+    ylab = "Genes of interest",
+    scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+      low = "blue",
+      high = "firebrick"))
+```
+
+### Correlation log gene expression heatmap
+
+```{r message=FALSE, warning=FALSE}
+df1 %>%
+  dplyr::filter(gene %in% unlist(g1)[!is.na(unlist(g1))]) %>%
+  tidyr::gather(key = "cell_name", value = "expression", -gene) %>%
+  dplyr::mutate(sample = gsub("^[^_]*.", "",
+                              gsub("_[^_]+$", "", cell_name))) %>%
+  dplyr::mutate(cell_type = dplyr::case_when(
+    grepl("B-cell", cell_name) ~ "B-cell",
+    grepl("CAF", cell_name) ~ "CAF",
+    grepl("DC", cell_name) ~ "DC",
+    grepl("EC", cell_name) ~ "EC",
+    grepl("Malignant", cell_name) ~ "Malignant",
+    grepl("Monocyte", cell_name) ~ "Monocyte/macrophage",
+    grepl("Pericyte", cell_name) ~ "Pericyte",
+    grepl("NKcell", cell_name) ~ "T/NKcell")) %>%
+  dplyr::group_by(gene, cell_type) %>%
+  dplyr::summarise(mean_exp = mean(expression)) %>%
+  tidyr::spread(key = "cell_type", value = "mean_exp") %>%
+  tibble::column_to_rownames(var = "gene") %>%
+  dplyr::mutate_all(log) %>%
+  as.data.frame() -> r2
+is.na(r2) <- sapply(r2, is.infinite)
+r2[is.na(r2)] <- 0
+
+r2 %>%
+  t() %>%
+  cor() %>%
+heatmaply::heatmaply(
+    main = "Correlation Heatmap of log gene counts across samples",
+    xlab = "Cell types by time point",
+    ylab = "Genes of interest",
+    scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+      low = "blue",
+      high = "firebrick"))
+```
+
+### Correlation heatmap across samples
+
+```{r message=FALSE, warning=FALSE}
+r2 %>%
+  cor() %>%
+heatmaply::heatmaply(
+    main = "Correlation Heatmap of log gene counts across samples",
+    xlab = "Cell types by time point",
+    ylab = "Genes of interest",
+    scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+      low = "blue",
+      high = "firebrick"))
+```
+
+## Correlation plots
+
+The following correlation plots display how each gene set correlate each gene
+set with each other across cell types and time points. The correlation for each
+group is reported by displaying the R value and p-value.
+
+```{r message=FALSE, warning=FALSE}
+gsva_sig %>%
+  t() %>% as.data.frame() %>%
+  tibble::rownames_to_column() %>%
+  dplyr::rename(sample_name = names(.)[1]) %>%
+  dplyr::mutate(sample = gsub("^[^_]*.", "",
+                              gsub("_[^_]+$", "", sample_name))) %>%
+  dplyr::mutate(cell_type = dplyr::case_when(
+    grepl("B-cell", sample_name) ~ "B-cell",
+    grepl("CAF", sample_name) ~ "CAF",
+    grepl("DC", sample_name) ~ "DC",
+    grepl("EC", sample_name) ~ "EC",
+    grepl("Malignant", sample_name) ~ "Malignant",
+    grepl("Monocyte", sample_name) ~ "Monocyte/macrophage",
+    grepl("Pericyte", sample_name) ~ "Pericyte",
+    grepl("NKcell", sample_name) ~ "T/NKcell")) %>%
+  as.data.frame() -> d1
+```
+
+### Correlation between signature scores combined across cell types and timepoints
+
+```{r message=FALSE, warning=FALSE}
+d1 %>%
+  dplyr::group_by(sample) %>%
+  dplyr::summarise(mean_gene1 = mean(gene1),
+                   mean_gene2 = mean(gene2)) %>%
+  ggplot(aes(x = mean_gene1, y = mean_gene2)) +
+  geom_point(size = 1, color = "black") +
+  stat_smooth(method = "lm", se = TRUE, fill = "gray", color = "darkgray",
+              formula = y ~ poly(x, 1, raw = TRUE)) +
+  ggpubr::stat_cor(method = "spearman", label.x = 0) +
+  theme_classic() +
+  xlab("Signature Score 1") +
+  ylab("Signature Score 2") +
+  theme(axis.title = element_text(size = 14),
+        legend.position = "none") +
+  ggtitle(paste0("Correlation between signature scores across cell types")
+          ) -> p0
+ggplotly(p0)
+```
+
+### Correlation between signature scores across cell types
+
+```{r message=FALSE, warning=FALSE}
+d1 %>%
+  dplyr::filter(!grepl("Patient", cell_type)) %>%
+  ggplot(aes(x = gene1, y = gene2)) +
+  geom_point(size = 1, aes(color = cell_type)) +
+  stat_smooth(method = "lm", se = TRUE, fill = "gray", color = "darkgray",
+              formula = y ~ poly(x, 1, raw = TRUE)) +
+  ggpubr::stat_cor(method = "spearman", label.x = 0) +
+  theme_classic() +
+  xlab("Signature Score 1") +
+  ylab("Signature Score 2") +
+  theme(axis.title = element_text(size = 14),
+        legend.position = "none") +
+  ggtitle(paste0("Correlation between signature scores across cell types")) +
+  facet_grid(cols = vars(cell_type)) -> p4
+# p4
+ggplotly(p4)
+```
+
+```{r}
+sessioninfo::session_info()
+```
