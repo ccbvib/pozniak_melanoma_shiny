@@ -17,7 +17,7 @@ library("shiny")
 library("shinydashboard")
 
 ############################ load datasets #####################################
-fp <- paste0("~/Documents/tmp/2022/202210_joanna2/pozniak_melanoma/counts/")
+fp <- paste0("~/Documents/tmp/2022/202210_joanna/pozniak_melanoma/counts/")
 readRDS(file = paste0(fp, "NRAS13_all_43k_agg_counts.rds")) -> df1
 
 ############################# User Interface ###################################
@@ -68,13 +68,14 @@ ui <- dashboardPage(skin = "green",
                                        "gene signatures across cell types"),
                                        align = "left"),
                                        plotlyOutput("heat1"),
-                                       align = "left")),
-                        fluidRow(column(width = 12,
-                                       h5(paste0("This heatmap displays the Spearman correlation across ",
-                                       "genes in the uploaded gene set calculated across all samples"),
-                                       align = "left"),
-                                       plotlyOutput("heat3"),
-                                       align = "left"))),
+                                       align = "left")) #,
+                        # fluidRow(column(width = 12,
+                        #                h5(paste0("This heatmap displays the Spearman correlation across ",
+                        #                "genes in the uploaded gene set calculated across all samples"),
+                        #                align = "left"),
+                        #                plotlyOutput("heat3"),
+                        #                align = "left"))
+                       ),
               tabPanel(title = "Correlation plots",
                        fluidRow(column(width = 12,
                                        h5(paste0("This plot displays the Spearman correlation between ",
@@ -292,70 +293,70 @@ server <- function(input, output) {
       })
       return(p4)
    })
-################################# HEATMAP 3 ####################################
-  output$heat3 <- renderPlotly({
-      req(input$file1)
-      tryCatch({
-      ## Read Gene of Interest table
-      read.csv(input$file1$datapath,
-               header = input$header,
-               sep = input$sep,
-               quote = input$quote) %>%
-            dplyr::select(1:2) %>%
-            dplyr::rename(gene_sig_score_1 = names(.)[1],
-                          gene_sig_score_2 = names(.)[2]) -> g1
-
-      ## coerce genes signature columns to a list with no NA values
-      gl <- list()
-      for (i in 1:ncol(g1)) {
-        g1 %>% 
-          dplyr::select(i) %>%
-          dplyr::pull() -> gl[[i]]
-        gl[[i]] <- gl[[i]][!is.na(gl[[i]])]
-      }
-      names(gl) <- names(g1)
-
-      ## manipulate pan cancer data to apply gene sig score calculation
-      df1 %>%
-        dplyr::filter(gene %in% unlist(g1)[!is.na(unlist(g1))]) %>%
-        tidyr::gather(key = "cell_name", value = "expression", -gene) %>%
-        dplyr::mutate(sample = gsub("^[^_]*.", "",
-                                    gsub("_[^_]+$", "", cell_name))) %>%
-        dplyr::mutate(cell_type = dplyr::case_when(
-          grepl("B-cell", cell_name) ~ "B-cell",
-          grepl("CAF", cell_name) ~ "CAF",
-          grepl("DC", cell_name) ~ "DC",
-          grepl("EC", cell_name) ~ "EC",
-          grepl("Malignant", cell_name) ~ "Malignant",
-          grepl("Monocyte", cell_name) ~ "Monocyte/macrophage",
-          grepl("Pericyte", cell_name) ~ "Pericyte",
-          grepl("NKcell", cell_name) ~ "T/NKcell")) %>%
-        dplyr::group_by(gene, cell_type) %>%
-        dplyr::summarise(mean_exp = mean(expression)) %>%
-        tidyr::spread(key = "cell_type", value = "mean_exp") %>%
-        tibble::column_to_rownames(var = "gene") %>%
-        dplyr::mutate_all(log) %>%
-        as.data.frame() -> r2
-      is.na(r2) <- sapply(r2, is.infinite)
-      r2[is.na(r2)] <- 0
-
-        ## heatmaply heatmap
-        r2 %>%
-          t() %>%
-          cor() %>%
-        heatmaply::heatmaply(
-            main = "Correlation Heatmap of log gene counts across samples",
-            xlab = "Genes of interest",
-            ylab = "Genes of interest",
-            scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
-              low = "blue",
-              high = "firebrick")) -> p6
-              },
-      error = function(e) {## return a safeError if a parsing error occurs
-        stop(safeError(e))
-      })
-      return(p6)
-   })
+################################# HEATMAP 2 ####################################
+  # output$heat3 <- renderPlotly({
+  #     req(input$file1)
+  #     tryCatch({
+  #     ## Read Gene of Interest table
+  #     read.csv(input$file1$datapath,
+  #              header = input$header,
+  #              sep = input$sep,
+  #              quote = input$quote) %>%
+  #           dplyr::select(1:2) %>%
+  #           dplyr::rename(gene_sig_score_1 = names(.)[1],
+  #                         gene_sig_score_2 = names(.)[2]) -> g1
+  # 
+  #     ## coerce genes signature columns to a list with no NA values
+  #     gl <- list()
+  #     for (i in 1:ncol(g1)) {
+  #       g1 %>% 
+  #         dplyr::select(i) %>%
+  #         dplyr::pull() -> gl[[i]]
+  #       gl[[i]] <- gl[[i]][!is.na(gl[[i]])]
+  #     }
+  #     names(gl) <- names(g1)
+  # 
+  #     ## manipulate pan cancer data to apply gene sig score calculation
+  #     df1 %>%
+  #       dplyr::filter(gene %in% unlist(g1)[!is.na(unlist(g1))]) %>%
+  #       tidyr::gather(key = "cell_name", value = "expression", -gene) %>%
+  #       dplyr::mutate(sample = gsub("^[^_]*.", "",
+  #                                   gsub("_[^_]+$", "", cell_name))) %>%
+  #       dplyr::mutate(cell_type = dplyr::case_when(
+  #         grepl("B-cell", cell_name) ~ "B-cell",
+  #         grepl("CAF", cell_name) ~ "CAF",
+  #         grepl("DC", cell_name) ~ "DC",
+  #         grepl("EC", cell_name) ~ "EC",
+  #         grepl("Malignant", cell_name) ~ "Malignant",
+  #         grepl("Monocyte", cell_name) ~ "Monocyte/macrophage",
+  #         grepl("Pericyte", cell_name) ~ "Pericyte",
+  #         grepl("NKcell", cell_name) ~ "T/NKcell")) %>%
+  #       dplyr::group_by(gene, cell_type) %>%
+  #       dplyr::summarise(mean_exp = mean(expression)) %>%
+  #       tidyr::spread(key = "cell_type", value = "mean_exp") %>%
+  #       tibble::column_to_rownames(var = "gene") %>%
+  #       dplyr::mutate_all(log) %>%
+  #       as.data.frame() -> r2
+  #     is.na(r2) <- sapply(r2, is.infinite)
+  #     r2[is.na(r2)] <- 0
+  # 
+  #       ## heatmaply heatmap
+  #       r2 %>%
+  #         t() %>%
+  #         cor() %>%
+  #       heatmaply::heatmaply(
+  #           main = "Correlation Heatmap of log gene counts across samples",
+  #           xlab = "Genes of interest",
+  #           ylab = "Genes of interest",
+  #           scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+  #             low = "blue",
+  #             high = "firebrick")) -> p6
+  #             },
+  #     error = function(e) {## return a safeError if a parsing error occurs
+  #       stop(safeError(e))
+  #     })
+  #     return(p6)
+  #  })
   
 ################################ SCATTER PLOT 1 ################################
 
@@ -411,7 +412,7 @@ server <- function(input, output) {
           geom_point(size = 1, color = "black") +
           stat_smooth(method = "lm", se = TRUE, fill = "gray", color = "darkgray",
                       formula = y ~ poly(x, 1, raw = TRUE)) +
-          ggpubr::stat_cor(method = "spearman", label.x = 0) +
+          ggpubr::stat_cor(method = "spearman", label.x = 0, label.y = 0.5) +
           theme_classic() +
           xlab("Signature Score 1") +
           ylab("Signature Score 2") +
