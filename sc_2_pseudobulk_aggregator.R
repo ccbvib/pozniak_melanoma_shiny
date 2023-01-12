@@ -9,14 +9,15 @@ library("tibble")
 library("Seurat")
 
 ## set server path to data files
-# fp <- paste0("/media/seq-srv-05/vrc/Project/Project_Theo/pan_cancer_shiny/")
+fp <- paste0("/media/seq-srv-05/vrc/Project/Project_Theo/pan_cancer_shiny/")
 
 ## setlocal path to files
-fp <- paste0("~/Documents/tmp/2022/202210_joanna/counts/")
+# fp <- paste0("~/Documents/tmp/2022/202210_joanna/counts/")
 
 ############################# Malignant_cells ################################## 
 # read Seurat object
-seu <- readRDS(file = paste0(fp, "data/Malignant_cells.rds"))
+seu <- readRDS(file = paste0(fp, "Malignant_cells_v2.rds"))
+# seu <- readRDS(file = paste0(fp, "data/Malignant_cells.rds"))
 # gl <- readRDS(file = paste0(fp, "common_genes.rds"))
 
 ## extract Seurat metadata
@@ -45,7 +46,9 @@ seu_meta %>%
 ## aggregate list of unique cells in order to rearrange and rename columns
 dplyr::bind_rows(samp_list) %>%
   dplyr::mutate(stem_name = paste0(
-    Malignant_clusters, "_", `BT/OT`, "_", `orig.ident`, "_", `GC number`, "_",
+    Malignant_clusters, "_",
+    Response, "_", ## new category
+    `BT/OT`, "_", `orig.ident`, "_", `GC number`, "_",
     row_number())) %>%
   as.data.frame() -> cell_list
 
@@ -97,7 +100,20 @@ wide_agg_cts %>%
                 !grepl("-", gene)) -> wide_agg_cts_clean
 
 ## save aggregated count matrix
-saveRDS(object = wide_agg_cts, file = paste0(fp, "mal_agg_counts.rds"))
+# saveRDS(object = wide_agg_cts, file = paste0(fp, "mal_agg_counts.rds"))
+saveRDS(object = wide_agg_cts, file = paste0(fp, "mal_agg_counts_v2.rds"))
+
+# fp <- "~/Documents/tmp/2022/202210_joanna2/pozniak_melanoma_shiny/"
+# mc <- readRDS(file = paste0(fp, "counts/mal_agg_counts_v2.rds"))
+# names(mc) <- gsub("Antigen_Presentation", "AntigenPresentation", names(mc))
+# names(mc) <- gsub("Interferon_Alpha_Beta_Response", "InterferonAlphaBetaResponse", names(mc))
+# names(mc) <- gsub("Mesenchymal_like", "Mesenchymallike", names(mc))
+# names(mc) <- gsub("Mitochondrial\\(low_quality\\)", "Mitochondriallowquality", names(mc))
+# names(mc) <- gsub("Neural_Crest_like", "NeuralCrestlike", names(mc))
+# names(mc) <- gsub("Patient_specific_", "Patientspecific", names(mc))
+# names(mc) <- gsub("Stress\\(HypoxiaResponse\\)", "StressHypoxiaResponse", names(mc))
+# names(mc) <- gsub("Stress\\(p53Response\\)", "Stressp53Response", names(mc))
+# saveRDS(object = mc, file = paste0(fp, "counts/mal_agg_counts_fixed_v2.rds"))
 
 ############################# NRAS13_all_43k ################################### 
 seu <- readRDS(file = paste0(fp, "data/NRAS13_all_43k.rds"))

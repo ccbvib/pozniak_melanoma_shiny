@@ -139,6 +139,7 @@ a1 %>%
   geom_violin(alpha = 0.8) +
   geom_point(position = position_jitter(seed = 1, width = 0.2),
              size = 0.4, alpha = 0.8) +
+  geom_boxplot(width = 0.05) +
   theme_classic() +
   theme(legend.position = "none",
         axis.text.x = element_text(angle = 45, hjust = 1)) +
@@ -157,6 +158,7 @@ a1 %>%
   geom_violin(alpha = 0.8) +
   geom_point(position = position_jitter(seed = 1, width = 0.2),
              size = 0.4, alpha = 0.8) +
+  geom_boxplot(width = 0.05) +
   theme_classic() +
   theme(legend.position = "none",
         axis.text.x = element_text(angle = 45, hjust = 1)) +
@@ -166,23 +168,24 @@ ggplotly(p2)
 # p2
 ```
 
-### Violin plots by gene set score, cell type and timepoint
+<!-- ### Violin plots by gene set score, cell type and timepoint -->
 
-```{r message=FALSE, warning=FALSE}
-a1 %>%
-  ggplot(aes(x = timepoint, y = expression, fill = cell_type)) +
-  geom_violin(alpha = 0.8) +
-  # geom_point(position = position_jitter(seed = 1, width = 0.2),
-  #            size = 0.4, alpha = 0.8) +
-  theme_classic() +
-  theme(legend.position = "none",
-        axis.text.x = element_text(angle = 45, hjust = 1)) +
-  ggtitle("Violin plot of gene signature scores by cell type and timepoint") +
-  scale_fill_manual(values = manual_color_scale) +
-  facet_grid(rows = vars(gene_sig)) -> p3
-ggplotly(p3)
-# p3
-```
+<!-- ```{r message=FALSE, warning=FALSE} -->
+<!-- a1 %>% -->
+<!--   ggplot(aes(x = timepoint, y = expression, fill = cell_type)) + -->
+<!--   geom_violin(alpha = 0.8) + -->
+<!--   # geom_boxplot(width = 0.05) + -->
+<!--   # geom_point(position = position_jitter(seed = 1, width = 0.2), -->
+<!--   #            size = 0.4, alpha = 0.8) + -->
+<!--   theme_classic() + -->
+<!--   theme(legend.position = "none", -->
+<!--         axis.text.x = element_text(angle = 45, hjust = 1)) + -->
+<!--   ggtitle("Violin plot of gene signature scores by cell type and timepoint") + -->
+<!--   scale_fill_manual(values = manual_color_scale) + -->
+<!--   facet_grid(rows = vars(gene_sig)) -> p3 -->
+<!-- ggplotly(p3) -->
+<!-- # p3 -->
+<!-- ``` -->
 
 ## Heatmaps
 
