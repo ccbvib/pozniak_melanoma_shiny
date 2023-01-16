@@ -283,6 +283,7 @@ server <- function(input, output) {
             geom_violin(alpha = 0.8) +
             geom_point(position = position_jitter(seed = 1, width = 0.2),
                        size = 0.4, alpha = 0.8) +
+            geom_boxplot(width = 0.05) +
             theme_classic() +
             xlab("Cell type (timepoints combined)") +
             ylab("Gene set signature score") +
@@ -365,6 +366,7 @@ server <- function(input, output) {
           geom_violin(alpha = 0.8) +
           geom_point(position = position_jitter(seed = 1, width = 0.2),
                      size = 0.4, alpha = 0.8) +
+          geom_boxplot(width = 0.05) +
           theme_classic() +
           xlab("Timepoint") +
           ylab("Gene set signature score") +
@@ -446,6 +448,7 @@ server <- function(input, output) {
           geom_violin(alpha = 0.8) +
           geom_point(position = position_jitter(seed = 1, width = 0.2),
                      size = 0.4, alpha = 0.8) +
+          geom_boxplot(width = 0.05) +
           theme_classic() +
           xlab("Timepoint") +
           ylab("Gene set signature score") +
