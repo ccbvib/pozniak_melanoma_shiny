@@ -153,6 +153,9 @@ ggplotly(p1)
 ### Violin plots by gene set score and timepoint 
 
 ```{r message=FALSE, warning=FALSE}
+# a1 %>%
+#   saveRDS(file = "human_workflow2_violin_data.rds")
+
 a1 %>%
   ggplot(aes(x = timepoint, y = expression, fill = timepoint)) +
   geom_violin(alpha = 0.8) +

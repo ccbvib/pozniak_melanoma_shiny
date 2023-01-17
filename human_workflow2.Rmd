@@ -152,38 +152,25 @@ a1 %>%
   scale_fill_manual(values = manual_color_scale) +
   facet_grid(~gene_sig) -> p1
 ggplotly(p1)
-# p1
 ```
 
 ### Violin plots by gene set score and timepoint 
 
 ```{r message=FALSE, warning=FALSE}
-# a1 %>%
-#   ggplot(aes(x = timepoint, y = expression, fill = timepoint)) +
-#   geom_violin(alpha = 0.8) +
-#   geom_point(position = position_jitter(seed = 1, width = 0.2),
-#              size = 0.4, alpha = 0.8) +
-#   geom_boxplot(width = 0.05) +
-#   theme_classic() +
-#   theme(legend.position = "none",
-#         axis.text.x = element_text(angle = 45, hjust = 1)) +
-#   ggtitle("Violin plot of gene signature scores by timepoint") +
-#   facet_grid(rows = vars(gene_sig)) -> p2
-# ggplotly(p2)
-# p2
-
-a1 %>%
+a1 %>% 
   dplyr::filter(gene_sig == "gene1") %>%
-  ggplot(aes(x = timepoint, y = expression, fill = timepoint)) +
-  geom_violin(alpha = 0.8) +
-  geom_point(position = position_jitter(seed = 1, width = 0.2),
-             size = 0.4, alpha = 0.8) +
-  geom_boxplot(width = 0.05) +
-  theme_classic() +
-  theme(legend.position = "none",
-        axis.text.x = element_text(angle = 45, hjust = 1)) +
-  ggtitle("Violin plot of gene set #1 signature scores by timepoint and response") +
-  facet_grid(rows = vars(response)) -> p2
+  dplyr::group_by(sample, response, timepoint) %>%
+  dplyr::summarise(mean_expression = mean(expression)) %>%
+  ggplot(aes(x = timepoint, y = mean_expression, fill = timepoint)) +
+         geom_violin(alpha = 0.8) +
+         geom_point(position = position_jitter(seed = 1, width = 0.2),
+                    size = 0.4, alpha = 0.8) +
+         geom_boxplot(width = 0.05) +
+         theme_classic() +
+         theme(legend.position = "none",
+               axis.text.x = element_text(angle = 45, hjust = 1)) +
+         ggtitle("Violin plot of gene set #1 signature scores by timepoint and response") +
+         facet_grid(rows = vars(response)) -> p2
 ggplotly(p2)
 ```
 
@@ -191,7 +178,9 @@ ggplotly(p2)
 ```{r message=FALSE, warning=FALSE}
 a1 %>%
   dplyr::filter(gene_sig == "gene2") %>%
-  ggplot(aes(x = timepoint, y = expression, fill = timepoint)) +
+  dplyr::group_by(sample, response, timepoint) %>%
+  dplyr::summarise(mean_expression = mean(expression)) %>%
+  ggplot(aes(x = timepoint, y = mean_expression, fill = timepoint)) +
   geom_violin(alpha = 0.8) +
   geom_point(position = position_jitter(seed = 1, width = 0.2),
              size = 0.4, alpha = 0.8) +
